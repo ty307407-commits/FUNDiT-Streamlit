@@ -242,7 +242,7 @@ else:
         node_color.append(color_map[node_data['type']])
         node_size.append(max(10, min(50, node_data['inbound_count'] * 2)))
     
-    # URLをカスタムデータとして保存
+    # URLをカスタムデータとして保存（将来の拡張用）
     node_urls = [node for node in G.nodes()]
     
     node_trace = go.Scatter(
@@ -251,7 +251,6 @@ else:
         mode='markers',
         hoverinfo='text',
         text=node_text,
-        customdata=node_urls,  # URLを保存
         marker=dict(
             size=node_size,
             color=node_color,
@@ -270,21 +269,11 @@ else:
             xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
             yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
             height=600,
-            plot_bgcolor='#fafbfc',
-            clickmode='event+select'
+            plot_bgcolor='#fafbfc'
         )
     )
     
-    # クリックイベントを有効化
-    selected_points = st.plotly_chart(fig, use_container_width=True, on_select="rerun", key="graph")
-    
-    # クリックされたノードを取得
-    if selected_points and 'selection' in selected_points:
-        selection = selected_points['selection']
-        if 'points' in selection and len(selection['points']) > 0:
-            clicked_index = selection['points'][0]['point_index']
-            if clicked_index < len(node_urls):
-                st.session_state['selected_url'] = node_urls[clicked_index]
+    st.plotly_chart(fig, use_container_width=True)
 
 # ページ一覧
 st.header("📄 ページ詳細リスト")
