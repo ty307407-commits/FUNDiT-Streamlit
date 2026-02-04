@@ -332,7 +332,7 @@ if selected_page_url == '__all__':
                 title = page.get('title', page.get('h1', page['url']))
                 
                 # カラム分割
-                col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
+                col1, col2, col3, col4, col5 = st.columns([2.5, 1, 1, 1, 0.5])
                 
                 with col1:
                     st.markdown(f"**{title}**")
@@ -346,6 +346,13 @@ if selected_page_url == '__all__':
                 
                 with col4:
                     st.metric("広告", len(page['ad_links']))
+                
+                with col5:
+                    # 詳細ボタン
+                    if st.button("📋", key=f"detail_{page['url']}", help="詳細を表示"):
+                        # セレクトボックスの値を変更
+                        st.session_state['selected_url'] = page['url']
+                        st.rerun()
                 
                 st.markdown("---")
 
