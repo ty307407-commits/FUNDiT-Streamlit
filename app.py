@@ -251,9 +251,9 @@ else:
         x=node_x,
         y=node_y,
         mode='markers',
-        hoverinfo='skip',  # ホバー無効化
+        hoverinfo='text',  # ホバー有効化
         text=node_text,
-        customdata=node_urls_list,  # URLを保存
+        customdata=node_urls_list,
         marker=dict(
             size=node_size,
             color=node_color,
@@ -267,7 +267,7 @@ else:
         data=edge_trace + [node_trace],
         layout=go.Layout(
             showlegend=False,
-            hovermode=False,  # ホバー完全無効
+            hovermode='closest',  # ホバー有効
             margin=dict(b=0, l=0, r=0, t=0),
             xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
             yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
@@ -276,11 +276,60 @@ else:
         )
     )
     
-    # グラフ表示（視覚化のみ）
-    st.plotly_chart(fig, use_container_width=True)
+    # グラフ表示（クリックイベント有効）
+    st.plotly_chart(fig, use_container_width=True, on_select="rerun", key="network_graph")
+    
+    # クリック情報をsession_stateから取得
+    clicked_page = None
+    if 'network_graph' in st.session_state:
+        selection_data = st.session_state['network_graph']
+        if selection_data and 'selection' in selection_data:
+            # point_indicesを使用
+            point_indices = selection_data['selection'].get('point_indices', [])
+            if point_indices and len(point_indices) > 0:
+                point_index = point_indices[0]
+                if point_index < len(node_urls_list):
+                    clicked_url = node_urls_list[point_index]
+                    clicked_page = next((p for p in filtered_pages if p['url'] == clicked_url), None)
+    
+    # クリックされたページを表示
+    if clicked_page:
+        st.markdown("---")
+        st.markdown(f"### 🎯 選択中のページ")
+        
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.markdown(f"**{clicked_page.get('title', clicked_page.get('h1', 'ページ'))}**")
+            st.caption(clicked_page['url'])
+        with col2:
+            # 詳細を開くボタン
+            if st.button("📋 詳細を見る", key="show_detail_btn", use_container_width=True):
+                st.session_state['selected_url'] = clicked_page['url']
+                st.rerun()
+        
+        # 簡易統計
+        col_stat1, col_stat2, col_stat3 = st.columns(3)
+        with col_stat1:
+            st.metric("被リンク", clicked_page['inbound_count'])
+        with col_stat2:
+            st.metric("内部リンク", len(clicked_page['internal_links']))
+        with col_stat3:
+            st.metric("広告", len(clicked_page['ad_links']))
+        st.markdown("---")
+    
+    # 凡例と説明
+    col_legend1, col_legend2, col_legend3 = st.columns(3)
+    with col_legend1:
+        st.markdown("🟢 **収益化ページ** - 最も重要なページ")
+    with col_legend2:
+        st.markdown("🔵 **フィーダーページ** - トラフィックを誘導")
+    with col_legend3:
+        st.markdown("🟠 **ハイブリッド** - 両方の特性")
+    
+    st.caption("💡 ノードをクリック → 詳細ボタンで展開 | マウスを乗せると情報表示")
     
     # ナビゲーションのヒント
-    st.info("💡 **ページの詳細を見るには:**\n- 📋 下の一覧でタイトルをクリックして展開\n- 🔍 またはセレクトボックスから選択")
+    st.info("📋 **詳細を見るには：** グラフのノードをクリック → 詳細ボタン | または下の一覧でタイトルをクリック")
 
 
 # ページ一覧
