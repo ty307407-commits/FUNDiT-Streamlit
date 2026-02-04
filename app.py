@@ -313,7 +313,7 @@ st.caption(f"現在の選択: {selected_page_url[:50] if selected_page_url != '_
 # 全ページ一覧表示
 if selected_page_url == '__all__':
     st.subheader(f"📋 全ページ一覧（{len(filtered_pages)}ページ）")
-    st.info("💡 上のセレクトボックスからページを選択してください")
+    st.info("💡 タイトルをクリックして展開すると、詳細情報（内部リンク、広告リンク、キーワードなど）が表示されます")
     
     # ページタイプごとにグループ化
     type_labels = {
@@ -327,34 +327,59 @@ if selected_page_url == '__all__':
         if pages_of_type:
             st.markdown(f"### {type_labels[page_type]} ({len(pages_of_type)})")
             
-            # カード形式で表示
+            # カード形式で表示（展開可能）
             for page in pages_of_type:
                 title = page.get('title', page.get('h1', page['url']))
                 
-                # カラム分割
-                col1, col2, col3, col4, col5 = st.columns([2.5, 1, 1, 1, 0.5])
-                
-                with col1:
-                    st.markdown(f"**{title}**")
-                    st.caption(page['url'])
-                
-                with col2:
-                    st.metric("被リンク", page['inbound_count'])
-                
-                with col3:
-                    st.metric("内部リンク", len(page['internal_links']))
-                
-                with col4:
-                    st.metric("広告", len(page['ad_links']))
-                
-                with col5:
-                    # 詳細ボタン
-                    if st.button("📋", key=f"detail_{page['url']}", help="詳細を表示"):
-                        # セレクトボックスの値を変更
-                        st.session_state['selected_url'] = page['url']
-                        st.rerun()
-                
-                st.markdown("---")
+                # 展開可能なカード
+                with st.expander(f"**{title}** | 被リンク:{page['inbound_count']} | 内部:{len(page['internal_links'])} | 広告:{len(page['ad_links'])}", expanded=False):
+                    # ページ詳細
+                    st.markdown(f"**URL:** [{page['url']}]({page['url']})")
+                    
+                    # 統計
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("被リンク数", page['inbound_count'])
+                    with col2:
+                        st.metric("内部リンク数", len(page['internal_links']))
+                    with col3:
+                        st.metric("広告リンク数", len(page['ad_links']))
+                    
+                    # Ahrefsキーワード
+                    if page['url'] in ahrefs_data:
+                        st.markdown("#### 🎯 上位キーワード（20位以内）")
+                        keywords = ahrefs_data[page['url']]
+                        
+                        keyword_html = ""
+                        for kw in keywords[:20]:
+                            rank_class = "rank-1-10" if kw['Current position'] <= 10 else "rank-11-20"
+                            keyword_html += f'<span class="keyword-badge {rank_class}">' \
+                                          f'<strong>{kw["Current position"]}位</strong> ' \
+                                          f'{kw["Keyword"]} ({kw["Volume"]})</span> '
+                        
+                        st.markdown(keyword_html, unsafe_allow_html=True)
+                    
+                    # 内部リンク
+                    if page['internal_links']:
+                        st.markdown("#### 🔗 内部リンク")
+                        
+                        link_data = []
+                        for link in page['internal_links'][:20]:
+                            linked_page = next((p for p in data['pages'] if p['url'] == link), None)
+                            link_title = linked_page.get('title', linked_page.get('h1', link)) if linked_page else link.split('/')[-1]
+                            link_data.append({'タイトル': link_title, 'URL': link})
+                        
+                        df_links = pd.DataFrame(link_data)
+                        st.dataframe(df_links, use_container_width=True, hide_index=True)
+                    
+                    # 広告リンク
+                    if page['ad_links']:
+                        st.markdown("#### 💰 広告リンク")
+                        df_ads = pd.DataFrame([
+                            {'テキスト': ad.get('text', 'リンク'), 'タイプ': ad['type']}
+                            for ad in page['ad_links'][:10]
+                        ])
+                        st.dataframe(df_ads, use_container_width=True, hide_index=True)
 
 
 # 個別ページ詳細表示
