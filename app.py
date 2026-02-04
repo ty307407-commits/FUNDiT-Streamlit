@@ -296,19 +296,19 @@ if current_selection not in page_urls:
 default_index = page_urls.index(current_selection) if current_selection in page_urls else 0
 
 selected_page_url = st.selectbox(
-    "ページを選択（タイトルボタンをクリックしても選択できます）",
+    "ページを選択してください",
     page_urls,
     index=default_index,
     format_func=lambda url: page_options[url],
     key='page_selector'
 )
 
-# セレクトボックスで選択が変更された場合のみ更新
-if selected_page_url != current_selection:
-    st.session_state['selected_url'] = selected_page_url
-else:
-    # ボタンクリックによる変更を保持
-    selected_page_url = current_selection
+# セレクトボックスの選択をsession_stateに保存
+st.session_state['selected_url'] = selected_page_url
+
+# デバッグ情報
+st.caption(f"現在の選択: {selected_page_url[:50] if selected_page_url != '__all__' else '全ページ一覧'}")
+
 
 # 全ページ一覧表示
 if selected_page_url == '__all__':
