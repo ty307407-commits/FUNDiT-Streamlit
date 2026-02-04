@@ -340,11 +340,7 @@ if selected_page_url == '__all__':
                         use_container_width=True
                     ):
                         st.session_state['selected_url'] = page['url']
-                        # 互換性のためtry-except
-                        try:
-                            st.rerun()
-                        except:
-                            st.experimental_rerun()
+                        st.rerun()
                 
                 with col2:
                     st.metric("被リンク", page['inbound_count'], label_visibility="collapsed")
