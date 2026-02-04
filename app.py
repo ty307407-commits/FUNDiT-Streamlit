@@ -82,14 +82,20 @@ domain = st.sidebar.radio(
 @st.cache_data
 def load_data(domain):
     """JSONデータを読み込む"""
+    # 絶対パスを使用（Streamlit Cloud対応）
+    import os
+    base_dir = Path(__file__).parent
+    
     file_map = {
-        "GCMC": "GCMC/gcmc_link_analysis_report.json",
-        "QBC": "QBC/qbc_link_analysis_report.json"
+        "GCMC": base_dir / "GCMC" / "gcmc_link_analysis_report.json",
+        "QBC": base_dir / "QBC" / "qbc_link_analysis_report.json"
     }
     
-    file_path = Path(file_map[domain])
+    file_path = file_map[domain]
     if not file_path.exists():
         st.error(f"❌ データファイルが見つかりません: {file_path}")
+        st.info(f"📁 現在のディレクトリ: {os.getcwd()}")
+        st.info(f"📂 探しているパス: {file_path}")
         return None
     
     with open(file_path, 'r', encoding='utf-8') as f:
