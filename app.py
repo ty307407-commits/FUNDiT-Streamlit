@@ -285,11 +285,15 @@ page_options = {
     **{p['url']: p.get('title', p.get('h1', p['url'])) for p in filtered_pages}
 }
 
-# デフォルトの選択
-# デフォルトの選択
-default_index = 0
-if st.session_state.get('selected_url') and st.session_state['selected_url'] in page_urls:
-    default_index = page_urls.index(st.session_state['selected_url'])
+# session_stateから現在の選択を取得（ボタンクリックで変更されている可能性がある）
+current_selection = st.session_state.get('selected_url', '__all__')
+
+# 現在の選択がpage_urlsにない場合（フィルター変更時など）、デフォルトに戻す
+if current_selection not in page_urls:
+    current_selection = '__all__'
+
+# デフォルトインデックスを設定
+default_index = page_urls.index(current_selection) if current_selection in page_urls else 0
 
 selected_page_url = st.selectbox(
     "ページを選択（タイトルボタンをクリックしても選択できます）",
@@ -299,14 +303,12 @@ selected_page_url = st.selectbox(
     key='page_selector'
 )
 
-# セレクトボックスが変更された場合のみ更新
-# （ボタンクリック時は既にsession_stateが更新されているので上書きしない）
-if 'last_selectbox_value' not in st.session_state:
-    st.session_state['last_selectbox_value'] = selected_page_url
-
-if selected_page_url != st.session_state.get('selected_url'):
+# セレクトボックスで選択が変更された場合のみ更新
+if selected_page_url != current_selection:
     st.session_state['selected_url'] = selected_page_url
-    st.session_state['last_selectbox_value'] = selected_page_url
+else:
+    # ボタンクリックによる変更を保持
+    selected_page_url = current_selection
 
 # 全ページ一覧表示
 if selected_page_url == '__all__':
