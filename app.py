@@ -286,20 +286,27 @@ page_options = {
 }
 
 # デフォルトの選択
+# デフォルトの選択
 default_index = 0
 if st.session_state.get('selected_url') and st.session_state['selected_url'] in page_urls:
     default_index = page_urls.index(st.session_state['selected_url'])
 
 selected_page_url = st.selectbox(
-    "ページを選択（またはグラフ上のノードをクリック）",
+    "ページを選択（タイトルボタンをクリックしても選択できます）",
     page_urls,
     index=default_index,
     format_func=lambda url: page_options[url],
     key='page_selector'
 )
 
-# セレクトボックスの変更を反映
-st.session_state['selected_url'] = selected_page_url
+# セレクトボックスが変更された場合のみ更新
+# （ボタンクリック時は既にsession_stateが更新されているので上書きしない）
+if 'last_selectbox_value' not in st.session_state:
+    st.session_state['last_selectbox_value'] = selected_page_url
+
+if selected_page_url != st.session_state.get('selected_url'):
+    st.session_state['selected_url'] = selected_page_url
+    st.session_state['last_selectbox_value'] = selected_page_url
 
 # 全ページ一覧表示
 if selected_page_url == '__all__':
