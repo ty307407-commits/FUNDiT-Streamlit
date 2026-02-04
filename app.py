@@ -280,6 +280,15 @@ else:
     try:
         selection = st.plotly_chart(fig, use_container_width=True, on_select="rerun", key="network_graph")
         
+        # デバッグ: selectionの内容を表示
+        with st.expander("🔧 デバッグ情報（開発者向け）"):
+            st.write("Selection type:", type(selection))
+            st.write("Selection value:", selection)
+            if selection:
+                st.write("Has selection attr:", hasattr(selection, 'selection'))
+                if hasattr(selection, 'selection'):
+                    st.write("Selection content:", selection.selection)
+        
         # クリックされた場合、情報をグラフ下に表示
         if selection and hasattr(selection, 'selection') and selection.selection:
             points = selection.selection.get('points', [])
@@ -302,6 +311,7 @@ else:
     except Exception as e:
         # エラー時は通常のグラフとして表示
         st.plotly_chart(fig, use_container_width=True)
+        st.error(f"⚠️ グラフクリックエラー: {str(e)}")
         st.caption("💡 グラフのノードをクリックして詳細を表示")
 
 # ページ一覧
