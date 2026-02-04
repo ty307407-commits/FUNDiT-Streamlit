@@ -276,43 +276,46 @@ else:
         )
     )
     
-    # クリックイベントを処理
-    try:
-        selection = st.plotly_chart(fig, use_container_width=True, on_select="rerun", key="network_graph")
+    # グラフ表示（クリックイベントはsession_stateに保存される）
+    st.plotly_chart(fig, use_container_width=True, on_select="rerun", key="network_graph")
+    
+    # デバッグ: session_stateの内容を表示
+    with st.expander("🔧 デバッグ情報（開発者向け）"):
+        st.write("Session state keys:", list(st.session_state.keys()))
+        if 'network_graph' in st.session_state:
+            st.write("network_graph in session_state:", st.session_state['network_graph'])
+    
+    # クリック情報をsession_stateから取得
+    if 'network_graph' in st.session_state and st.session_state['network_graph']:
+        selection_data = st.session_state['network_graph']
         
-        # デバッグ: selectionの内容を表示
-        with st.expander("🔧 デバッグ情報（開発者向け）"):
-            st.write("Selection type:", type(selection))
-            st.write("Selection value:", selection)
-            if selection:
-                st.write("Has selection attr:", hasattr(selection, 'selection'))
-                if hasattr(selection, 'selection'):
-                    st.write("Selection content:", selection.selection)
-        
-        # クリックされた場合、情報をグラフ下に表示
-        if selection and hasattr(selection, 'selection') and selection.selection:
-            points = selection.selection.get('points', [])
+        # 選択情報がある場合
+        if 'selection' in selection_data and selection_data['selection']:
+            points = selection_data['selection'].get('points', [])
             if points and len(points) > 0:
                 point_index = points[0].get('point_index')
+                
                 if point_index is not None and point_index < len(node_urls_list):
                     clicked_url = node_urls_list[point_index]
                     clicked_page = next((p for p in filtered_pages if p['url'] == clicked_url), None)
                     
                     if clicked_page:
                         # クリックした情報を表示
-                        st.info(f"🎯 選択中: **{clicked_page.get('title', clicked_page.get('h1', 'ページ'))}** | 被リンク: {clicked_page['inbound_count']} | 内部リンク: {len(clicked_page['internal_links'])} | 広告: {len(clicked_page['ad_links'])}")
+                        st.success(f"🎯 選択中: **{clicked_page.get('title', clicked_page.get('h1', 'ページ'))}**")
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("被リンク", clicked_page['inbound_count'])
+                        with col2:
+                            st.metric("内部リンク", len(clicked_page['internal_links']))
+                        with col3:
+                            st.metric("広告", len(clicked_page['ad_links']))
                         
-                        # セッションステートを更新
+                        # セッションステートを更新して詳細ページに移動
                         if clicked_url != st.session_state.get('selected_url'):
                             st.session_state['selected_url'] = clicked_url
                             st.rerun()
-        else:
-            st.caption("💡 グラフのノードをクリックすると、そのページの詳細情報が表示されます")
-    except Exception as e:
-        # エラー時は通常のグラフとして表示
-        st.plotly_chart(fig, use_container_width=True)
-        st.error(f"⚠️ グラフクリックエラー: {str(e)}")
-        st.caption("💡 グラフのノードをクリックして詳細を表示")
+    else:
+        st.caption("💡 グラフのノードをクリックすると、そのページの詳細情報が表示されます")
 
 # ページ一覧
 st.header("📄 ページ詳細リスト")
