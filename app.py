@@ -279,6 +279,18 @@ else:
     # グラフ表示（クリックイベント有効）
     st.plotly_chart(fig, use_container_width=True, on_select="rerun", key="network_graph")
     
+    # デバッグ情報
+    with st.expander("🔧 デバッグ情報（クリックして確認）"):
+        st.write("session_state keys:", list(st.session_state.keys()))
+        if 'network_graph' in st.session_state:
+            st.write("network_graph data:", st.session_state['network_graph'])
+            if st.session_state['network_graph']:
+                selection_data = st.session_state['network_graph']
+                if 'selection' in selection_data:
+                    st.write("selection:", selection_data['selection'])
+                    st.write("point_indices:", selection_data['selection'].get('point_indices', []))
+                    st.write("points:", selection_data['selection'].get('points', []))
+    
     # クリック情報をsession_stateから取得
     clicked_page = None
     if 'network_graph' in st.session_state:
@@ -316,6 +328,8 @@ else:
         with col_stat3:
             st.metric("広告", len(clicked_page['ad_links']))
         st.markdown("---")
+    else:
+        st.caption("💡 グラフのノードをクリックしてください")
     
     # 凡例と説明
     col_legend1, col_legend2, col_legend3 = st.columns(3)
