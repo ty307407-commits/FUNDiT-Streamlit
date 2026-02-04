@@ -313,20 +313,7 @@ else:
 # 全ページ一覧表示
 if selected_page_url == '__all__':
     st.subheader(f"📋 全ページ一覧（{len(filtered_pages)}ページ）")
-    st.info("💡 タイトルをクリックすると、そのページの詳細情報が表示されます")
-    
-    # デバッグ: ボタンテスト
-    st.markdown("---")
-    col_test1, col_test2 = st.columns(2)
-    with col_test1:
-        if 'test_counter' not in st.session_state:
-            st.session_state['test_counter'] = 0
-        if st.button("🧪 テストボタン（クリック数をカウント）", use_container_width=True):
-            st.session_state['test_counter'] += 1
-            st.rerun()
-    with col_test2:
-        st.metric("クリック数", st.session_state.get('test_counter', 0))
-    st.markdown("---")
+    st.info("💡 行をクリックして選択してください")
     
     # ページタイプごとにグループ化
     type_labels = {
@@ -335,48 +322,44 @@ if selected_page_url == '__all__':
         'hybrid': '🔄 ハイブリッド'
     }
     
-    type_colors = {
-        'monetization': '#84fab0',
-        'feeder': '#a1c4fd',
-        'hybrid': '#ffecd2'
-    }
-    
     for page_type in ['monetization', 'feeder', 'hybrid']:
         pages_of_type = [p for p in filtered_pages if p['type'] == page_type]
         if pages_of_type:
             st.markdown(f"### {type_labels[page_type]} ({len(pages_of_type)})")
             
-            # カード形式で表示
-            for page in pages_of_type:
+            # データフレーム作成
+            table_data = []
+            for idx, page in enumerate(pages_of_type):
                 title = page.get('title', page.get('h1', page['url']))
-                
-                # カラム分割（タイトル部分を大きく）
-                col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
-                
-                with col1:
-                    # クリック可能なボタン
-                    if st.button(
-                        title,
-                        key=f"btn_{page['url']}",
-                        help="クリックして詳細を表示",
-                        use_container_width=True
-                    ):
-                        st.session_state['selected_url'] = page['url']
-                        st.rerun()
-                
-                with col2:
-                    st.metric("被リンク", page['inbound_count'], label_visibility="collapsed")
-                    st.caption("被リンク")
-                
-                with col3:
-                    st.metric("内部リンク", len(page['internal_links']), label_visibility="collapsed")
-                    st.caption("内部リンク")
-                
-                with col4:
-                    st.metric("広告", len(page['ad_links']), label_visibility="collapsed")
-                    st.caption("広告")
-                
-                st.markdown("---")
+                table_data.append({
+                    'タイトル': title,
+                    '被リンク数': page['inbound_count'],
+                    '内部リンク': len(page['internal_links']),
+                    '広告': len(page['ad_links']),
+                    '_url': page['url']  # 非表示のURL列
+                })
+            
+            df = pd.DataFrame(table_data)
+            
+            # 選択可能なデータフレーム
+            event = st.dataframe(
+                df[['タイトル', '被リンク数', '内部リンク', '広告']],
+                use_container_width=True,
+                hide_index=True,
+                on_select="rerun",
+                selection_mode="single-row",
+                key=f"df_{page_type}"
+            )
+            
+            # 選択された行があれば
+            if event and 'selection' in event and 'rows' in event['selection'] and len(event['selection']['rows']) > 0:
+                selected_idx = event['selection']['rows'][0]
+                selected_url = df.iloc[selected_idx]['_url']
+                if selected_url != st.session_state.get('selected_url'):
+                    st.session_state['selected_url'] = selected_url
+                    st.rerun()
+            
+            st.markdown("---")
 
 
 # 個別ページ詳細表示
