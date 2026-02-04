@@ -242,12 +242,16 @@ else:
         node_color.append(color_map[node_data['type']])
         node_size.append(max(10, min(50, node_data['inbound_count'] * 2)))
     
+    # URLをカスタムデータとして保存
+    node_urls = [node for node in G.nodes()]
+    
     node_trace = go.Scatter(
         x=node_x,
         y=node_y,
         mode='markers',
         hoverinfo='text',
         text=node_text,
+        customdata=node_urls,  # URLを保存
         marker=dict(
             size=node_size,
             color=node_color,
@@ -266,26 +270,106 @@ else:
             xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
             yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
             height=600,
-            plot_bgcolor='#fafbfc'
+            plot_bgcolor='#fafbfc',
+            clickmode='event+select'
         )
     )
     
-    st.plotly_chart(fig, use_container_width=True)
+    # クリックイベントを有効化
+    selected_points = st.plotly_chart(fig, use_container_width=True, on_select="rerun", key="graph")
+    
+    # クリックされたノードを取得
+    if selected_points and 'selection' in selected_points:
+        selection = selected_points['selection']
+        if 'points' in selection and len(selection['points']) > 0:
+            clicked_index = selection['points'][0]['point_index']
+            if clicked_index < len(node_urls):
+                st.session_state['selected_url'] = node_urls[clicked_index]
 
 # ページ一覧
 st.header("📄 ページ詳細リスト")
 
-# ページ選択
+# ページ選択（デフォルトは「全て表示」）
+page_urls = ['__all__'] + [p['url'] for p in filtered_pages]
+page_options = {
+    '__all__': '📋 全ページ一覧を表示',
+    **{p['url']: p.get('title', p.get('h1', p['url'])) for p in filtered_pages}
+}
+
+# デフォルトの選択
+default_index = 0
+if st.session_state.get('selected_url') and st.session_state['selected_url'] in page_urls:
+    default_index = page_urls.index(st.session_state['selected_url'])
+
 selected_page_url = st.selectbox(
-    "ページを選択",
-    [p['url'] for p in filtered_pages],
-    format_func=lambda url: next(
-        (p.get('title', p.get('h1', url)) for p in filtered_pages if p['url'] == url),
-        url
-    )
+    "ページを選択（またはグラフ上のノードをクリック）",
+    page_urls,
+    index=default_index,
+    format_func=lambda url: page_options[url],
+    key='page_selector'
 )
 
-if selected_page_url:
+# セレクトボックスの変更を反映
+st.session_state['selected_url'] = selected_page_url
+
+# 全ページ一覧表示
+if selected_page_url == '__all__':
+    st.subheader(f"📋 全ページ一覧（{len(filtered_pages)}ページ）")
+    st.info("💡 タイトルをクリックすると、そのページの詳細情報が表示されます")
+    
+    # ページタイプごとにグループ化
+    type_labels = {
+        'monetization': '💰 収益化ページ',
+        'feeder': '📝 フィーダーページ',
+        'hybrid': '🔄 ハイブリッド'
+    }
+    
+    type_colors = {
+        'monetization': '#84fab0',
+        'feeder': '#a1c4fd',
+        'hybrid': '#ffecd2'
+    }
+    
+    for page_type in ['monetization', 'feeder', 'hybrid']:
+        pages_of_type = [p for p in filtered_pages if p['type'] == page_type]
+        if pages_of_type:
+            st.markdown(f"### {type_labels[page_type]} ({len(pages_of_type)})")
+            
+            # カード形式で表示
+            for page in pages_of_type:
+                title = page.get('title', page.get('h1', page['url']))
+                
+                # カラム分割（タイトル部分を大きく）
+                col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
+                
+                with col1:
+                    # クリック可能なボタン
+                    if st.button(
+                        title,
+                        key=f"btn_{page['url']}",
+                        help="クリックして詳細を表示",
+                        use_container_width=True
+                    ):
+                        st.session_state['selected_url'] = page['url']
+                        st.rerun()
+                
+                with col2:
+                    st.metric("被リンク", page['inbound_count'], label_visibility="collapsed")
+                    st.caption("被リンク")
+                
+                with col3:
+                    st.metric("内部リンク", len(page['internal_links']), label_visibility="collapsed")
+                    st.caption("内部リンク")
+                
+                with col4:
+                    st.metric("広告", len(page['ad_links']), label_visibility="collapsed")
+                    st.caption("広告")
+                
+                st.markdown("---")
+
+
+# 個別ページ詳細表示
+elif selected_page_url:
     page = next(p for p in filtered_pages if p['url'] == selected_page_url)
     
     # ページ詳細
