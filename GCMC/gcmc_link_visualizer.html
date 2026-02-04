@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GCMC 内部リンク構造 & 広告配置分析</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .controls {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        label {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        input, select {
+            padding: 8px 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .stats {
+            padding: 20px 30px;
+            background: #fff;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .stat-card {
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .stat-card.monetization {
+            background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+        }
+
+        .stat-card.feeder {
+            background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);
+        }
+
+        .stat-card.hybrid {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+        }
+
+        .stat-card.total {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 0;
+            min-height: 800px;
+        }
+
+        #network-graph {
+            background: #fafbfc;
+            position: relative;
+        }
+
+        .detail-panel {
+            background: white;
+            border-left: 2px solid #e9ecef;
+            padding: 30px;
+            overflow-y: auto;
+            max-height: 800px;
+        }
+
+        .detail-panel h2 {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #212529;
+        }
+
+        .page-title {
+            font-size: 1.1em;
+            margin-bottom: 15px;
+            color: #495057;
+            line-height: 1.5;
+        }
+
+        .info-group {
+            margin-bottom: 25px;
+        }
+
+        .info-group h3 {
+            font-size: 1.1em;
+            margin-bottom: 10px;
+            color: #667eea;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .badge.monetization {
+            background: #84fab0;
+            color: #065f46;
+        }
+
+        .badge.feeder {
+            background: #a1c4fd;
+            color: #1e40af;
+        }
+
+        .badge.hybrid {
+            background: #ffecd2;
+            color: #92400e;
+        }
+
+        .link-list {
+            list-style: none;
+            margin-top: 10px;
+        }
+
+        .link-list li {
+            padding: 8px 12px;
+            margin-bottom: 5px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 0.9em;
+            word-break: break-all;
+            transition: background 0.2s;
+        }
+
+        .link-list li:hover {
+            background: #e9ecef;
+        }
+
+        .ad-link {
+            background: #fff3cd !important;
+            border-left: 3px solid #ffc107;
+        }
+
+        .ad-type {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #667eea;
+            color: white;
+            border-radius: 4px;
+            font-size: 0.75em;
+            margin-left: 8px;
+        }
+
+        .legend {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+
+        .legend h4 {
+            margin-bottom: 10px;
+            font-size: 1em;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+
+        .legend-circle {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid #333;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #6c757d;
+            padding: 40px;
+        }
+
+        .empty-state-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .node {
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .node:hover {
+            stroke-width: 3px;
+        }
+
+        .link {
+            stroke: #999;
+            stroke-opacity: 0.3;
+            stroke-width: 1.5px;
+        }
+
+        .link.highlighted {
+            stroke: #667eea;
+            stroke-opacity: 0.8;
+            stroke-width: 3px;
+        }
+
+        .node-label {
+            font-size: 10px;
+            pointer-events: none;
+            fill: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔗 GCMC 内部リンク構造 & 広告配置分析</h1>
+            <p class="subtitle">収益化ページとフィーダーページの可視化</p>
+        </header>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>フィルター:</label>
+                <select id="typeFilter">
+                    <option value="all">全て表示</option>
+                    <option value="monetization">収益化ページのみ</option>
+                    <option value="feeder">フィーダーページのみ</option>
+                    <option value="hybrid">ハイブリッドのみ</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>検索:</label>
+                <input type="text" id="searchInput" placeholder="キーワードまたはURL...">
+            </div>
+        </div>
+
+        <div class="stats" id="stats"></div>
+
+        <div class="main-content">
+            <div id="network-graph">
+                <div class="legend">
+                    <h4>凡例</h4>
+                    <div class="legend-item">
+                        <div class="legend-circle" style="background: #84fab0;"></div>
+                        <span>収益化ページ</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-circle" style="background: #a1c4fd;"></div>
+                        <span>フィーダーページ</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-circle" style="background: #ffecd2;"></div>
+                        <span>ハイブリッド</span>
+                    </div>
+                </div>
+            </div>
+            <div class="detail-panel">
+                <div class="empty-state">
+                    <div class="empty-state-icon">👆</div>
+                    <p>ノードをクリックして詳細を表示</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allData = null;
+        let filteredData = null;
+        let simulation = null;
+
+        // データ読み込み
+        fetch('/Users/rk/Library/CloudStorage/Dropbox/Fundit/gcmc_link_analysis_report.json')
+            .then(response => response.json())
+            .then(data => {
+                allData = data;
+                filteredData = data;
+                initializeApp();
+            })
+            .catch(error => {
+                console.error('Error loading data:', error);
+                alert('データの読み込みに失敗しました。gcmc_link_analyzer.pyを実行してください。');
+            });
+
+        function initializeApp() {
+            renderStats();
+            renderGraph();
+            setupEventListeners();
+        }
+
+        function renderStats() {
+            const summary = allData.summary;
+            const statsHTML = `
+                <div class="stat-card total">
+                    <div class="stat-value">${summary.total_pages}</div>
+                    <div class="stat-label">総ページ数</div>
+                </div>
+                <div class="stat-card monetization">
+                    <div class="stat-value">${summary.monetization_pages}</div>
+                    <div class="stat-label">収益化ページ</div>
+                </div>
+                <div class="stat-card feeder">
+                    <div class="stat-value">${summary.feeder_pages}</div>
+                    <div class="stat-label">フィーダーページ</div>
+                </div>
+                <div class="stat-card hybrid">
+                    <div class="stat-value">${summary.hybrid_pages}</div>
+                    <div class="stat-label">ハイブリッド</div>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                    <div class="stat-value">${summary.total_ad_links}</div>
+                    <div class="stat-label">総広告リンク数</div>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); color: white;">
+                    <div class="stat-value">${summary.avg_internal_links}</div>
+                    <div class="stat-label">平均内部リンク数</div>
+                </div>
+            `;
+            document.getElementById('stats').innerHTML = statsHTML;
+        }
+
+        function renderGraph() {
+            const container = document.getElementById('network-graph');
+            const width = container.clientWidth;
+            const height = 800;
+
+            // 既存のSVGを削除
+            d3.select('#network-graph svg').remove();
+
+            const svg = d3.select('#network-graph')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            // ズーム機能
+            const g = svg.append('g');
+            svg.call(d3.zoom()
+                .scaleExtent([0.1, 4])
+                .on('zoom', (event) => {
+                    g.attr('transform', event.transform);
+                }));
+
+            // ノードとリンクデータの準備
+            const nodes = filteredData.pages.map(p => ({
+                id: p.url,
+                title: p.title,
+                keyword: p.keyword,
+                rank: p.rank,
+                type: p.type,
+                internal_links: p.internal_links,
+                ad_links: p.ad_links,
+                inbound_count: p.inbound_count
+            }));
+
+            const links = [];
+            const urlToIndex = new Map(nodes.map((n, i) => [n.id, i]));
+
+            filteredData.pages.forEach(page => {
+                page.internal_links.forEach(link => {
+                    if (urlToIndex.has(link)) {
+                        links.push({
+                            source: page.url,
+                            target: link
+                        });
+                    }
+                });
+            });
+
+            // 色の設定
+            const colorScale = d3.scaleOrdinal()
+                .domain(['monetization', 'feeder', 'hybrid', 'error'])
+                .range(['#84fab0', '#a1c4fd', '#ffecd2', '#ffb3ba']);
+
+            // サイズスケール（被リンク数に基づく）
+            const maxInbound = d3.max(nodes, d => d.inbound_count) || 1;
+            const sizeScale = d3.scaleLinear()
+                .domain([0, maxInbound])
+                .range([5, 20]);
+
+            // Force simulation
+            simulation = d3.forceSimulation(nodes)
+                .force('link', d3.forceLink(links).id(d => d.id).distance(100))
+                .force('charge', d3.forceManyBody().strength(-300))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(d => sizeScale(d.inbound_count) + 5));
+
+            // リンクの描画
+            const link = g.append('g')
+                .selectAll('line')
+                .data(links)
+                .join('line')
+                .attr('class', 'link');
+
+            // ノードの描画
+            const node = g.append('g')
+                .selectAll('circle')
+                .data(nodes)
+                .join('circle')
+                .attr('class', 'node')
+                .attr('r', d => sizeScale(d.inbound_count))
+                .attr('fill', d => colorScale(d.type))
+                .attr('stroke', '#333')
+                .attr('stroke-width', 2)
+                .on('click', (event, d) => showDetails(d))
+                .call(d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended));
+
+            // Simulation tick
+            simulation.on('tick', () => {
+                link
+                    .attr('x1', d => d.source.x)
+                    .attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x)
+                    .attr('y2', d => d.target.y);
+
+                node
+                    .attr('cx', d => d.x)
+                    .attr('cy', d => d.y);
+            });
+
+            function dragstarted(event) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                event.subject.fx = event.subject.x;
+                event.subject.fy = event.subject.y;
+            }
+
+            function dragged(event) {
+                event.subject.fx = event.x;
+                event.subject.fy = event.y;
+            }
+
+            function dragended(event) {
+                if (!event.active) simulation.alphaTarget(0);
+                event.subject.fx = null;
+                event.subject.fy = null;
+            }
+        }
+
+        function showDetails(node) {
+            const panel = document.querySelector('.detail-panel');
+            
+            const typeLabels = {
+                'monetization': '収益化ページ',
+                'feeder': 'フィーダーページ',
+                'hybrid': 'ハイブリッド',
+                'error': 'エラー'
+            };
+
+            let internalLinksHTML = '';
+            if (node.internal_links.length > 0) {
+                internalLinksHTML = `
+                    <div class="info-group">
+                        <h3>🔗 内部リンク (${node.internal_links.length})</h3>
+                        <ul class="link-list">
+                            ${node.internal_links.map(link => {
+                                const linkTitle = allData.pages.find(p => p.url === link)?.title || link;
+                                return `<li>${getLinkBasename(linkTitle)}</li>`;
+                            }).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+
+            let adLinksHTML = '';
+            if (node.ad_links.length > 0) {
+                adLinksHTML = `
+                    <div class="info-group">
+                        <h3>💰 広告リンク (${node.ad_links.length})</h3>
+                        <ul class="link-list">
+                            ${node.ad_links.map(ad => 
+                                `<li class="ad-link">
+                                    ${ad.text || 'リンク'}
+                                    <span class="ad-type">${ad.type}</span>
+                                </li>`
+                            ).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+
+            panel.innerHTML = `
+                <h2>ページ詳細</h2>
+                <div class="info-group">
+                    <span class="badge ${node.type}">${typeLabels[node.type]}</span>
+                </div>
+                <div class="page-title">${node.title || node.id}</div>
+                <div class="info-group">
+                    <h3>📊 基本情報</h3>
+                    <ul class="link-list">
+                        ${node.keyword ? `<li><strong>キーワード:</strong> ${node.keyword}</li>` : ''}
+                        ${node.rank ? `<li><strong>順位:</strong> ${node.rank}</li>` : ''}
+                        <li><strong>被リンク数:</strong> ${node.inbound_count}</li>
+                    </ul>
+                </div>
+                ${adLinksHTML}
+                ${internalLinksHTML}
+            `;
+        }
+
+        function getLinkBasename(url) {
+            const parts = url.split('/');
+            return parts[parts.length - 1] || parts[parts.length - 2] || url;
+        }
+
+        function setupEventListeners() {
+            document.getElementById('typeFilter').addEventListener('change', (e) => {
+                const filterValue = e.target.value;
+                if (filterValue === 'all') {
+                    filteredData = allData;
+                } else {
+                    filteredData = {
+                        ...allData,
+                        pages: allData.pages.filter(p => p.type === filterValue)
+                    };
+                }
+                renderGraph();
+            });
+
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                if (searchTerm === '') {
+                    filteredData = allData;
+                } else {
+                    filteredData = {
+                        ...allData,
+                        pages: allData.pages.filter(p => 
+                            p.url.toLowerCase().includes(searchTerm) ||
+                            p.title.toLowerCase().includes(searchTerm) ||
+                            (p.keyword && p.keyword.toLowerCase().includes(searchTerm))
+                        )
+                    };
+                }
+                renderGraph();
+            });
+        }
+    </script>
+</body>
+</html>
