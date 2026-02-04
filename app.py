@@ -313,6 +313,19 @@ if selected_page_url == '__all__':
     st.subheader(f"📋 全ページ一覧（{len(filtered_pages)}ページ）")
     st.info("💡 タイトルをクリックすると、そのページの詳細情報が表示されます")
     
+    # デバッグ: ボタンテスト
+    st.markdown("---")
+    col_test1, col_test2 = st.columns(2)
+    with col_test1:
+        if 'test_counter' not in st.session_state:
+            st.session_state['test_counter'] = 0
+        if st.button("🧪 テストボタン（クリック数をカウント）", use_container_width=True):
+            st.session_state['test_counter'] += 1
+            st.rerun()
+    with col_test2:
+        st.metric("クリック数", st.session_state.get('test_counter', 0))
+    st.markdown("---")
+    
     # ページタイプごとにグループ化
     type_labels = {
         'monetization': '💰 収益化ページ',
