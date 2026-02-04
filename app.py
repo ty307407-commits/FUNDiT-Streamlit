@@ -242,8 +242,8 @@ else:
         node_color.append(color_map[node_data['type']])
         node_size.append(max(10, min(50, node_data['inbound_count'] * 2)))
     
-    # URLをカスタムデータとして保存（将来の拡張用）
-    node_urls = [node for node in G.nodes()]
+    # ノードのURL順序を保存（クリック時に使用）
+    node_urls_list = list(G.nodes())
     
     node_trace = go.Scatter(
         x=node_x,
@@ -251,6 +251,7 @@ else:
         mode='markers',
         hoverinfo='text',
         text=node_text,
+        customdata=node_urls_list,  # URLを保存
         marker=dict(
             size=node_size,
             color=node_color,
@@ -273,7 +274,24 @@ else:
         )
     )
     
-    st.plotly_chart(fig, use_container_width=True)
+    # クリックイベントを処理
+    try:
+        selection = st.plotly_chart(fig, use_container_width=True, on_select="rerun", key="network_graph")
+        
+        # クリックされた場合
+        if selection and hasattr(selection, 'selection') and selection.selection:
+            points = selection.selection.get('points', [])
+            if points and len(points) > 0:
+                point_index = points[0].get('point_index')
+                if point_index is not None and point_index < len(node_urls_list):
+                    clicked_url = node_urls_list[point_index]
+                    if clicked_url != st.session_state.get('selected_url'):
+                        st.session_state['selected_url'] = clicked_url
+                        st.rerun()
+    except Exception as e:
+        # エラー時は通常のグラフとして表示
+        st.plotly_chart(fig, use_container_width=True)
+        st.caption("💡 ヒント: グラフのノードをクリックして詳細を表示できます")
 
 # ページ一覧
 st.header("📄 ページ詳細リスト")
@@ -305,10 +323,6 @@ selected_page_url = st.selectbox(
 
 # セレクトボックスの選択をsession_stateに保存
 st.session_state['selected_url'] = selected_page_url
-
-# デバッグ情報
-st.caption(f"現在の選択: {selected_page_url[:50] if selected_page_url != '__all__' else '全ページ一覧'}")
-
 
 # 全ページ一覧表示
 if selected_page_url == '__all__':
