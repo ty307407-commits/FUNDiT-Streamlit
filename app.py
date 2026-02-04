@@ -313,7 +313,7 @@ else:
 # 全ページ一覧表示
 if selected_page_url == '__all__':
     st.subheader(f"📋 全ページ一覧（{len(filtered_pages)}ページ）")
-    st.info("💡 行をクリックして選択してください")
+    st.info("💡 上のセレクトボックスからページを選択してください")
     
     # ページタイプごとにグループ化
     type_labels = {
@@ -327,39 +327,27 @@ if selected_page_url == '__all__':
         if pages_of_type:
             st.markdown(f"### {type_labels[page_type]} ({len(pages_of_type)})")
             
-            # データフレーム作成
-            table_data = []
-            for idx, page in enumerate(pages_of_type):
+            # カード形式で表示
+            for page in pages_of_type:
                 title = page.get('title', page.get('h1', page['url']))
-                table_data.append({
-                    'タイトル': title,
-                    '被リンク数': page['inbound_count'],
-                    '内部リンク': len(page['internal_links']),
-                    '広告': len(page['ad_links']),
-                    '_url': page['url']  # 非表示のURL列
-                })
-            
-            df = pd.DataFrame(table_data)
-            
-            # 選択可能なデータフレーム
-            event = st.dataframe(
-                df[['タイトル', '被リンク数', '内部リンク', '広告']],
-                use_container_width=True,
-                hide_index=True,
-                on_select="rerun",
-                selection_mode="single-row",
-                key=f"df_{page_type}"
-            )
-            
-            # 選択された行があれば
-            if event and 'selection' in event and 'rows' in event['selection'] and len(event['selection']['rows']) > 0:
-                selected_idx = event['selection']['rows'][0]
-                selected_url = df.iloc[selected_idx]['_url']
-                if selected_url != st.session_state.get('selected_url'):
-                    st.session_state['selected_url'] = selected_url
-                    st.rerun()
-            
-            st.markdown("---")
+                
+                # カラム分割
+                col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
+                
+                with col1:
+                    st.markdown(f"**{title}**")
+                    st.caption(page['url'])
+                
+                with col2:
+                    st.metric("被リンク", page['inbound_count'])
+                
+                with col3:
+                    st.metric("内部リンク", len(page['internal_links']))
+                
+                with col4:
+                    st.metric("広告", len(page['ad_links']))
+                
+                st.markdown("---")
 
 
 # 個別ページ詳細表示
