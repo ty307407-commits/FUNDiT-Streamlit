@@ -373,6 +373,24 @@ if selected_page_url == '__all__':
                         
                         st.markdown(keyword_html, unsafe_allow_html=True)
                     
+                    # 被リンク（このページにリンクしているページ）
+                    inbound_pages = [p for p in data['pages'] if page['url'] in p.get('internal_links', [])]
+                    if inbound_pages:
+                        st.markdown(f"#### 🔙 被リンク（{len(inbound_pages)}件）")
+                        st.caption("このページにリンクしているページ一覧")
+                        
+                        inbound_data = []
+                        for inbound_page in inbound_pages[:20]:
+                            inbound_title = inbound_page.get('title', inbound_page.get('h1', inbound_page['url']))
+                            inbound_data.append({
+                                'タイトル': inbound_title,
+                                'URL': inbound_page['url'],
+                                'タイプ': type_labels.get(inbound_page['type'], inbound_page['type'])
+                            })
+                        
+                        df_inbound = pd.DataFrame(inbound_data)
+                        st.dataframe(df_inbound, use_container_width=True, hide_index=True)
+                    
                     # 内部リンク
                     if page['internal_links']:
                         st.markdown("#### 🔗 内部リンク")
